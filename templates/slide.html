@@ -1,1 +1,50 @@
+(이미지 슬라이드 표시 + OX 응답)
+html
+복사
+편집
+<style>
+  .container { display: flex; gap: 40px; }
+  .slide-box {
+    flex: 2; padding: 20px;
+  }
+  .slide-box img {
+    width: 100%; border: 1px solid #ccc;
+  }
+  .button-box {
+    flex: 1; display: flex; flex-direction: column; gap: 20px;
+  }
+  .ox-button {
+    font-size: 24px; padding: 15px; border: none; border-radius: 10px;
+    cursor: pointer;
+  }
+  .ox-button.o { background-color: #4caf50; color: white; }
+  .ox-button.x { background-color: #f44336; color: white; }
+  .result-button {
+    background-color: #2196f3; color: white; padding: 15px;
+    font-size: 20px; border: none; border-radius: 10px;
+  }
+</style>
+
+<div class="container">
+  <div class="slide-box">
+    <h3>{{ idx }}/{{ total }}번 슬라이드</h3>
+    <img src="{{ image_url }}" alt="슬라이드 이미지">
+  </div>
+  <div class="button-box">
+    {% if not is_last %}
+      <form method="post">
+        <input type="hidden" name="answer" value="O">
+        <button class="ox-button o" type="submit">⭕</button>
+      </form>
+      <form method="post">
+        <input type="hidden" name="answer" value="X">
+        <button class="ox-button x" type="submit">❌</button>
+      </form>
+    {% else %}
+      <form action="/result" method="get">
+        <button class="result-button" type="submit">📊 결과 보기</button>
+      </form>
+    {% endif %}
+  </div>
+</div>
 
