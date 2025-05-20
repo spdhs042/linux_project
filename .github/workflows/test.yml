@@ -1,0 +1,30 @@
+name: Convert PDF to Images Test
+
+on:
+  push:
+    branches:
+      - main  # 메인 브랜치로 푸시될 때 실행
+  pull_request:
+    branches:
+      - main  # PR이 생성될 때 실행
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 리포지토리 체크아웃
+        uses: actions/checkout@v3
+
+      - name: Python 설치
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: 필수 패키지 설치
+        run: |
+          pip install -r requirements.txt
+
+      - name: 테스트 실행
+        run: |
+          pytest
