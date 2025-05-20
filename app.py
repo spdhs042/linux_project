@@ -64,7 +64,7 @@ def slide():
     image_url = slides[idx]
     is_last = (idx == len(slides) - 1)  # 마지막 슬라이드 여부 확인
 
-    return render_template('slide_image.html',
+    return render_template('slide.html',
                            idx=idx+1,
                            total=len(slides),
                            image_url=image_url,
