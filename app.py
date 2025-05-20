@@ -83,3 +83,6 @@ def result():
                            slides=slides,
                            answers=answers,
                            score=score)  # 결과 페이지 렌더링
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000, debug=True)
