@@ -23,12 +23,13 @@ def assign_user_id():
     if 'user_id' not in session:
         session['user_id'] = str(uuid.uuid4())[:8]  # 8자리 UUID 생성
 
+ # 📌 index.html을 기본 페이지로
 @app.route('/')
 def index():
-    return render_template('index.html')  # 📌 index.html을 기본 페
+    return render_template('index.html')
 
 # 📌 /upload에서도 가능하도록 변경
-@app.route('/upload', methods=['POST'])
+@app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':  # 사용자가 파일을 업로드했을 때
         file = request.files['file']  # 업로드된 파일 가져오기
