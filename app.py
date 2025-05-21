@@ -20,7 +20,12 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 # 📌 각 사용자에게 고유 ID를 할당하는 함수
 @app.before_request
 def assign_user_id():
-    if점
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())[:8]  # 8자리 UUID 생성
+
+@app.route('/')
+def index():
+    return render_template('index.html')  # 📌 index.html을 기본 페
 
 # 📌 /upload에서도 가능하도록 변경
 @app.route('/upload', methods=['POST'])
