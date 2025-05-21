@@ -76,7 +76,7 @@ def slide():
     image_url = slides[idx] if slide_type == 'image' else None
     return render_template('slide.html', idx=idx+1, total=len(slides), image_url=image_url, is_first=is_first, is_last=is_last)
 
-@app.route('/admin/stats')
+@app.route('/stats')
 def admin_stats():
     stats = {}
     slide_labels = []
@@ -98,7 +98,7 @@ def admin_stats():
     except Exception as e:
         print("❌ 관리자 통계 에러:", e)
 
-    return render_template("admin_stats.html",
+    return render_template("stats.html",
                            stats=stats,
                            labels=slide_labels,
                            o_counts=o_counts,
@@ -106,7 +106,7 @@ def admin_stats():
 
 @app.route('/result')
 def result():
-    return redirect(url_for('admin_stats'))  # 결과 페이지 대신 관리자 통계 페이지로 이동
+    return redirect(url_for('stats'))  # 결과 페이지 대신 관리자 통계 페이지로 이동
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
