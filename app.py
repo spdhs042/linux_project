@@ -20,11 +20,10 @@ os.makedirs(IMAGE_FOLDER, exist_ok=True)
 # 📌 각 사용자에게 고유 ID를 할당하는 함수
 @app.before_request
 def assign_user_id():
-    if 'user_id' not in session:
-        session['user_id'] = str(uuid.uuid4())[:8]  # 8자리 UUID 생성
+    if점
 
-# 📌 파일 업로드 및 변환 처리
-@app.route('/', methods=['GET', 'POST'])
+# 📌 /upload에서도 가능하도록 변경
+@app.route('/upload', methods=['POST'])
 def upload():
     if request.method == 'POST':  # 사용자가 파일을 업로드했을 때
         file = request.files['file']  # 업로드된 파일 가져오기
@@ -50,11 +49,6 @@ def upload():
         return redirect(url_for('slide'))  # 슬라이드 페이지로 이동
 
     return render_template('upload.html')  # 파일 업로드 페이지 렌더링
-    
-# 📌 /upload에서도 가능하도록 변경
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    return upload()  # 기존 함수 호출
     
 # 📌 O/X 응답을 받아 슬라이드를 표시하는 기능
 @app.route('/slide', methods=['GET', 'POST'])
