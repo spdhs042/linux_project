@@ -74,7 +74,7 @@ def slide():
     is_last = (idx == len(slides) - 1)
 
     image_url = slides[idx] if slide_type == 'image' else None
-    return render_template('slide_image.html', idx=idx+1, total=len(slides), image_url=image_url, is_first=is_first, is_last=is_last)
+    return render_template('slide.html', idx=idx+1, total=len(slides), image_url=image_url, is_first=is_first, is_last=is_last)
 
 @app.route('/admin/stats')
 def admin_stats():
