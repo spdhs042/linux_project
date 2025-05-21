@@ -1,93 +1,112 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from werkzeug.utils import secure_filename
-from utils.convert_pdf_to_images import convert_pdf_to_images
+import csv
+import uuid
 import os
+import pandas as pd
+from utils.convert_pdf_to_images import convert_pdf_to_images
 
-# Flask 애플리케이션 초기화
 app = Flask(__name__)
-app.secret_key = 'your-secret-key'  # 세션 관리를 위한 secret key 설정
+app.secret_key = 'your-secret-key'
 
-# 파일 업로드 및 변환된 이미지 저장 폴더 설정
 UPLOAD_FOLDER = 'uploads'
 IMAGE_FOLDER = 'static/slides'
-
-# 폴더가 없으면 생성
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(IMAGE_FOLDER, exist_ok=True)
 
-# 📌 파일 업로드 및 변환 처리
+@app.before_request
+def assign_user_id():
+    if 'user_id' not in session:
+        session['user_id'] = str(uuid.uuid4())[:8]
+
 @app.route('/', methods=['GET', 'POST'])
 def upload():
-    if request.method == 'POST':  # 사용자가 파일을 업로드했을 때
-        file = request.files['file']  # 업로드된 파일 가져오기
-        filename = secure_filename(file.filename)  # 파일 이름을 안전하게 처리
-        filepath = os.path.join(UPLOAD_FOLDER, filename)  # 저장 경로 설정
-        file.save(filepath)  # 파일 저장
+    if request.method == 'POST':
+        file = request.files['file']
+        filename = file.filename
+        filepath = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(filepath)
 
-        # PDF 파일이라면 이미지로 변환
-        if filename.endswith('.pdf'):
-            image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)  # 변환 실행
-            slides = [f"/{path}" for path in image_paths]  # 웹에서 접근 가능한 이미지 경로 생성
+        slides = []
+        slide_type = ''
+
+        if filename.endswith('.pdf'):  # PPT 업로드 기능 제거
+            image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)
+            slides = [f"/{path}" for path in image_paths]
+            slide_type = 'image'
         else:
-            return "지원하지 않는 파일 형식입니다."  # PDF 외의 파일 업로드 제한
+            return "지원하지 않는 파일 형식입니다."
 
-        # 세션을 활용해 슬라이드 목록 및 초기 상태 저장
         session['slides'] = slides
-        session['answers'] = []  # 학생들의 O/X 응답 저장 리스트
-        session['current_idx'] = 0  # 현재 슬라이드 인덱스 초기화
-        return redirect(url_for('slide'))  # 슬라이드 페이지로 이동
+        session['slide_type'] = slide_type
+        session['answers'] = []
+        session['current_idx'] = 0
 
-    return render_template('upload.html')  # 파일 업로드 페이지 렌더링
+        return redirect(url_for('slide'))
 
-# 📌 /upload에서도 가능하도록 변경
-@app.route('/upload', methods=['POST'])
-def upload_file():
-    return upload()  # 기존 함수 호출
-    
-# 📌 O/X 응답을 받아 슬라이드를 표시하는 기능
+    return render_template('upload.html')
+
 @app.route('/slide', methods=['GET', 'POST'])
 def slide():
-    slides = session.get('slides')  # 세션에서 슬라이드 목록 가져오기
-    answers = session.get('answers')  # 학생 응답 리스트 가져오기
-    idx = session.get('current_idx', 0)  # 현재 슬라이드 번호 가져오기
+    slides = session.get('slides')
+    slide_type = session.get('slide_type')
+    answers = session.get('answers')
+    idx = session.get('current_idx', 0)
 
     if not slides:
-        return redirect(url_for('upload'))  # 슬라이드가 없으면 업로드 페이지로 이동
+        return redirect(url_for('upload'))
 
-    if request.method == 'POST':  # 학생이 O/X 응답을 클릭했을 때
-        answer = request.form.get('answer')  # 응답 값 가져오기
-        if answer:  # 응답이 있으면 리스트에 추가
+    if request.method == 'POST':
+        answer = request.form.get('answer')
+        if 0 < idx < len(slides) - 1 and answer:
+            user_id = session.get('user_id')
+            with open('responses.csv', 'a', newline='') as f:
+                writer = csv.writer(f)
+                writer.writerow([user_id, idx, answer])
             answers.append(answer)
-            session['answers'] = answers  # 세션에 응답 저장
-            session['current_idx'] = idx + 1  # 다음 슬라이드로 이동
-        return redirect(url_for('slide'))  # 새 슬라이드를 표시
+        session['answers'] = answers
+        session['current_idx'] = idx + 1
+        return redirect(url_for('slide'))
 
-    if idx >= len(slides):  # 모든 슬라이드를 다 봤으면 결과 페이지로 이동
-        return redirect(url_for('result'))
+    if idx >= len(slides):
+        return redirect(url_for('admin_stats'))  # 결과 페이지 대신 관리자 통계 페이지로 이동
 
-    # 현재 슬라이드 이미지 URL 가져오기
-    image_url = slides[idx]
-    is_last = (idx == len(slides) - 1)  # 마지막 슬라이드 여부 확인
+    is_first = (idx == 0)
+    is_last = (idx == len(slides) - 1)
 
-    return render_template('slide.html',
-                           idx=idx+1,
-                           total=len(slides),
-                           image_url=image_url,
-                           is_last=is_last)  # 슬라이드 페이지 렌더링
+    image_url = slides[idx] if slide_type == 'image' else None
+    return render_template('slide_image.html', idx=idx+1, total=len(slides), image_url=image_url, is_first=is_first, is_last=is_last)
 
-# 📌 학생들의 응답 결과를 분석하여 점수 계산
+@app.route('/admin/stats')
+def admin_stats():
+    stats = {}
+    slide_labels = []
+    o_counts = []
+    x_counts = []
+
+    try:
+        df = pd.read_csv('responses.csv', names=['user_id', 'slide_index', 'answer'])
+        df = df[df['slide_index'] != 0]
+
+        grouped = df.groupby(['slide_index', 'answer']).size().unstack(fill_value=0)
+        stats = grouped.to_dict(orient='index')
+
+        for slide_idx in sorted(stats.keys()):
+            slide_labels.append(f"Slide {slide_idx}")
+            o_counts.append(stats[slide_idx].get('O', 0))
+            x_counts.append(stats[slide_idx].get('X', 0))
+
+    except Exception as e:
+        print("❌ 관리자 통계 에러:", e)
+
+    return render_template("admin_stats.html",
+                           stats=stats,
+                           labels=slide_labels,
+                           o_counts=o_counts,
+                           x_counts=x_counts)
+
 @app.route('/result')
 def result():
-    slides = session.get('slides', [])  # 세션에서 슬라이드 목록 가져오기
-    answers = session.get('answers', [])  # 학생 응답 리스트 가져오기
+    return redirect(url_for('admin_stats'))  # 결과 페이지 대신 관리자 통계 페이지로 이동
 
-    # O 선택 비율을 백분율로 계산 (슬라이드 수 대비 O 선택 수)
-    score = answers.count('O') / len(slides) * 100 if slides else 0
-
-    return render_template('result.html',
-                           slides=slides,
-                           answers=answers,
-                           score=score)  # 결과 페이지 렌더링
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
