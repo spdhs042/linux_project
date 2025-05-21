@@ -50,7 +50,12 @@ def upload():
         return redirect(url_for('slide'))  # 슬라이드 페이지로 이동
 
     return render_template('upload.html')  # 파일 업로드 페이지 렌더링
-
+    
+# 📌 /upload에서도 가능하도록 변경
+@app.route('/upload', methods=['POST'])
+def upload_file():
+    return upload()  # 기존 함수 호출
+    
 # 📌 O/X 응답을 받아 슬라이드를 표시하는 기능
 @app.route('/slide', methods=['GET', 'POST'])
 def slide():
