@@ -1,7 +1,7 @@
-from flask import Flask, render_template, request, redirect, url_for, session
-import csv
-import uuid
-import os
+from flask import Flask, render_template, request, redirect, url_for, session 
+import csv #csv 파일 처리 모듈
+import uuid #사용자 고유 ID 생성 모듈
+import os #파일 및 폴더 관리 모듈
 import pandas as pd
 from utils.convert_pdf_to_images import convert_pdf_to_images
 
@@ -28,33 +28,40 @@ def assign_user_id():
 def index():
     return render_template('index.html')
 
-# 📌 /upload에서도 가능하도록 변경
+# 📌 파일 업로드 및 슬라이드 생성 함수
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
-    if request.method == 'POST':  # 사용자가 파일을 업로드했을 때
+    if request.method == 'POST':  # 사용자가 파일을 업로드했을 때 실행
         file = request.files['file']  # 업로드된 파일 가져오기
         filename = file.filename  # 파일 이름 가져오기
-        filepath = os.path.join(UPLOAD_FOLDER, filename)  # 저장 경로 설정
-        file.save(filepath)  # 파일 저장
+        filepath = os.path.join(UPLOAD_FOLDER, filename)  # 파일 저장 경로 설정
+        file.save(filepath)  # 파일을 지정된 경로에 저장
 
-        slides = []
-        slide_type = ''
+        # 📌 responses.csv 초기화 (파일 업로드 시마다 새롭게 생성됨)
+        with open('responses.csv', 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['user_id', 'slide_index', 'answer'])  # CSV 파일 헤더 추가 (사용자 ID, 슬라이드 번호, 응답)
 
-        if filename.endswith('.pdf'):  # PDF 파일만 처리 (PPTX 지원 제거)
-            image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)  # 변환 실행
-            slides = [f"/{path}" for path in image_paths]  # 웹에서 접근 가능한 이미지 경로 생성
-            slide_type = 'image'
+        slides = []  # 슬라이드 리스트 초기화
+        slide_type = ''  # 슬라이드 타입 ('image' 지정 예정)
+
+        if filename.endswith('.pdf'):  # 업로드된 파일이 PDF인지 확인
+            image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)  # PDF를 이미지로 변환
+            slides = [f"/{path}" for path in image_paths]  # 변환된 이미지 경로 생성 (웹에서 접근 가능하게)
+            slide_type = 'image'  # 슬라이드 타입을 'image'로 설정
         else:
-            return "지원하지 않는 파일 형식입니다."  # PDF 외의 파일 업로드 제한
+            return "지원하지 않는 파일 형식입니다."  # PDF 외 파일 업로드 방지
 
-        # 세션을 활용해 슬라이드 목록 및 초기 상태 저장
-        session['slides'] = slides
-        session['slide_type'] = slide_type
-        session['answers'] = []  # 학생들의 O/X 응답 저장 리스트
+        # 📌 세션을 활용해 슬라이드 목록 및 초기 상태 저장
+        session['slides'] = slides  # 변환된 슬라이드 이미지 목록 저장
+        session['slide_type'] = slide_type  # 슬라이드 타입 저장 ('image')
+        session['answers'] = []  # 학생들의 O/X 응답을 저장할 리스트 초기화
         session['current_idx'] = 0  # 현재 슬라이드 인덱스 초기화
+
         return redirect(url_for('slide'))  # 슬라이드 페이지로 이동
 
     return render_template('upload.html')  # 파일 업로드 페이지 렌더링
+
     
 # 📌 O/X 응답을 받아 슬라이드를 표시하는 기능
 @app.route('/slide', methods=['GET', 'POST'])
