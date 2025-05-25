@@ -1,32 +1,49 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>O/X 슬라이드</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style_slide.css') }}">
+  <meta charset="UTF-8">
+  <title>슬라이드 {{ index }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style_slide.css') }}">
 </head>
 <body>
-    <div class="container">
-        <div class="slide-box">
-            <h3>{{ idx }}/{{ total }}번 슬라이드</h3>
-            <img src="{{ image_url }}" alt="슬라이드 이미지">
-        </div>
-        <div class="button-box">
-            {% if not is_last %}
-                <form method="post">
-                    <input type="hidden" name="answer" value="O">
-                    <button class="ox-button o" type="submit">⭕</button>
-                </form>
-                <form method="post">
-                    <input type="hidden" name="answer" value="X">
-                    <button class="ox-button x" type="submit">❌</button>
-                </form>
-            {% else %}
-                <form action="/stats" method="get">
-                    <button class="result-button" type="submit">결과 보기</button>
-                </form>
-            {% endif %}
-        </div>
+  <div class="slide-container">
+    <div class="slide-main">
+      <h3>슬라이드 {{ index }} / {{ slide_count }}</h3>
+
+      {% if not is_first %}
+        <a href="/slides/{{ index - 1 }}" class="arrow-btn arrow-prev" aria-label="이전 슬라이드">&lt;</a>
+      {% endif %}
+      {% if not is_last %}
+        <a href="/slides/{{ index + 1 }}" class="arrow-btn arrow-next" aria-label="다음 슬라이드">&gt;</a>
+      {% else %}
+        <a href="/stats" class="arrow-btn arrow-next" aria-label="결과 보기">✔</a>
+      {% endif %}
+
+      <img src="{{ image_url }}" class="slide-img" alt="슬라이드 이미지">
+
+      {% if not is_first and not is_last %}
+        <form method="post">
+          <input type="hidden" name="answer" value="O">
+          <button class="btn o-btn" type="submit">⭕ O</button>
+        </form>
+        <form method="post">
+          <input type="hidden" name="answer" value="X">
+          <button class="btn x-btn" type="submit">❌ X</button>
+        </form>
+      {% endif %}
     </div>
+
+    <div class="slide-sidebar">
+      <h4>📚 전체 슬라이드</h4>
+      {% for i in range(1, slide_count + 1) %}
+        <div class="thumb-wrapper">
+          <a href="/slides/{{ i }}">
+            <img src="/static/slides/slide_{{ i }}.png" class="thumb {% if i == index %}selected{% endif %}" alt="슬라이드 {{ i }}">
+          </a>
+          <div class="thumb-number">{{ i }}</div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
 </body>
 </html>
