@@ -14,9 +14,14 @@ app.secret_key = 'your-secret-key'  # 세션 관리를 위한 secret key 설정
 UPLOAD_FOLDER = 'uploads'
 IMAGE_FOLDER = 'static/slides'
 
-# 폴더가 없으면 생성
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-os.makedirs(IMAGE_FOLDER, exist_ok=True)
+def initialize_folders():
+    for folder in [UPLOAD_FOLDER, IMAGE_FOLDER]:
+        if os.path.exists(folder):
+            shutil.rmtree(folder)  # 폴더 삭제
+        os.makedirs(folder, exist_ok=True)  # 폴더 다시 생성
+
+initialize_folders()  # 서버 시작 시 초기화
+
 
 # 📌 각 사용자에게 고유 ID를 할당하는 함수
 @app.before_request
