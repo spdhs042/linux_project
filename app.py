@@ -1,4 +1,4 @@
-hhh
+
 from flask import Flask, render_template, request, redirect, url_for, session 
 import csv #csv 파일 처리 모듈
 import uuid #사용자 고유 ID 생성 모듈
@@ -105,31 +105,37 @@ def slide():
 # 📌 학생들의 응답 결과를 분석하여 통계 제공
 @app.route('/stats')
 def admin_stats():
-    stats = {}  # O/X 응답 통계 저장
-    slide_labels = []  # 슬라이드 라벨 목록
-    o_counts = []  # O 응답 개수 리스트
-    x_counts = []  # X 응답 개수 리스트
+    stats = {}
+    slide_labels = []
+    o_counts = []
+    x_counts = []
 
     try:
-        df = pd.read_csv('responses.csv', names=['user_id', 'slide_index', 'answer'])  # CSV 파일 읽기
-        df = df[df['slide_index'] != 0]  # 첫 페이지 제외
+        df = pd.read_csv('responses.csv', names=['user_id', 'slide_index', 'answer'])
 
-        grouped = df.groupby(['slide_index', 'answer']).size().unstack(fill_value=0)  # 응답 개수 그룹화
-        stats = grouped.to_dict(orient='index')  # 딕셔너리 형태로 변환
+        slides = session.get('slides', [])
+        last_index = len(slides) - 1
 
-        for slide_idx in sorted(stats.keys()):  # 슬라이드 순서대로 정리
-            slide_labels.append(f"Slide {slide_idx}")  # 슬라이드 라벨 추가
-            o_counts.append(stats[slide_idx].get('O', 0))  # O 응답 개수 추가
-            x_counts.append(stats[slide_idx].get('X', 0))  # X 응답 개수 추가
+        # 📌 첫 번째(0)와 마지막 슬라이드 제외
+        df = df[(df['slide_index'] != 0) & (df['slide_index'] != last_index)]
+
+        grouped = df.groupby(['slide_index', 'answer']).size().unstack(fill_value=0)
+        stats = grouped.to_dict(orient='index')
+
+        for slide_idx in sorted(stats.keys()):
+            slide_labels.append(f"Slide {slide_idx}")
+            o_counts.append(stats[slide_idx].get('O', 0))
+            x_counts.append(stats[slide_idx].get('X', 0))
 
     except Exception as e:
-        print("❌ 관리자 통계 에러:", e)  # 오류 발생 시 출력
+        print("❌ 관리자 통계 에러:", e)
 
-    return render_template("stats.html",  # 📌 통계 페이지 렌더링
+    return render_template("stats.html",
                            stats=stats,
                            labels=slide_labels,
                            o_counts=o_counts,
                            x_counts=x_counts)
+
 
 # 📌 Flask 서버 실행
 if __name__ == '__main__':
