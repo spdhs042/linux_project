@@ -28,3 +28,8 @@ linux_project/
 ├── requirements.txt       # 필요한 라이브러리 목록
 ├── run.sh                 # 다중접속
 └── venv/                  # 가상환경 폴더
+
+
+동시접속 테스트 방법
+
+
