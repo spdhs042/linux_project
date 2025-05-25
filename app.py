@@ -5,17 +5,45 @@ import uuid  # 사용자 고유 ID 생성 모듈
 import os  # 파일 및 폴더 관리 모듈
 import shutil  # 폴더 정리 모듈
 import pandas as pd  # 데이터 분석을 위한 pandas 모듈
-from utils.convert_pdf_to_images import convert_pdf_to_images  # PDF를 이미지로 변환하는 유틸 함수
+from utils.convert_pdf_to_images import convert_pdf_to_images
+import json  # JSON 데이터 저장 및 관리
 
-# 📌 Flask 애플리케이션 초기화
+# Flask 애플리케이션 초기화
 app = Flask(__name__)
 app.secret_key = 'your-secret-key'  # 세션 관리를 위한 secret key 설정
 
-# 📌 파일 저장 폴더 설정
+# 파일 저장 폴더 설정
 UPLOAD_FOLDER = 'uploads'  # PDF 파일 업로드 폴더
 IMAGE_FOLDER = 'static/slides'  # 변환된 슬라이드 이미지 저장 폴더
+SLIDES_FILE = 'slides.json'  # 모든 사용자가 공유할 슬라이드 데이터 파일
+RESPONSES_FILE = 'responses.json'  # 모든 사용자의 응답을 저장하는 파일
 
-# 📌 서버 시작 시 업로드 및 슬라이드 폴더 초기화 함수
+# 🔥 슬라이드 데이터를 JSON 파일에 저장하는 함수
+def save_slides(slides, slide_type):
+    data = {"slides": slides, "slide_type": slide_type}
+    with open(SLIDES_FILE, 'w') as f:
+        json.dump(data, f)
+
+# 🔥 JSON에서 슬라이드 목록 및 유형을 불러오는 함수
+def load_slides():
+    if os.path.exists(SLIDES_FILE):
+        with open(SLIDES_FILE, 'r') as f:
+            return json.load(f)
+    return {"slides": [], "slide_type": "image"}  # 기본값 반환
+
+# 🔥 응답 데이터를 JSON 파일에 저장하는 함수
+def save_answers(user_id, index, answer):
+    responses = []
+    if os.path.exists(RESPONSES_FILE):
+        with open(RESPONSES_FILE, "r") as f:
+            responses = json.load(f)
+
+    responses.append({"user_id": user_id, "slide_index": index, "answer": answer})
+
+    with open(RESPONSES_FILE, "w") as f:
+        json.dump(responses, f)
+
+# 🔥 서버 시작 시 업로드 및 슬라이드 폴더 초기화
 def initialize_folders():
     for folder in [UPLOAD_FOLDER, IMAGE_FOLDER]:
         if os.path.exists(folder):
@@ -24,7 +52,7 @@ def initialize_folders():
 
 initialize_folders()  # 서버 시작 시 폴더 정리 실행
 
-# 📌 각 사용자에게 고유한 ID를 부여하는 함수
+# 📌 각 사용자에게 고유 ID를 할당하는 함수
 @app.before_request
 def assign_user_id():
     if 'user_id' not in session:
@@ -45,26 +73,16 @@ def upload():
         filepath = os.path.join(UPLOAD_FOLDER, filename)  # 저장 경로 설정
         file.save(filepath)  # 파일을 지정된 폴더에 저장
 
-        # 📌 responses.csv 초기화 (파일 업로드 시마다 새롭게 생성됨)
-        with open('responses.csv', 'w', newline='') as f:
-            writer = csv.writer(f)
-            writer.writerow(['user_id', 'slide_index', 'answer'])  # CSV 파일 헤더 추가
-
         slides = []  # 슬라이드 리스트 초기화
-        slide_type = ''  # 슬라이드 타입 ('image' 지정 예정)
+        slide_type = "image"  # 기본 슬라이드 타입 설정
 
         if filename.endswith('.pdf'):  # PDF 파일인지 확인
             image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)  # PDF를 이미지로 변환
-            slides = [f"/{path}" for path in image_paths]  # 웹에서 접근 가능한 이미지 경로 생성
-            slide_type = 'image'  # 슬라이드 타입을 'image'로 설정
+            slides = [f"/static/slides/{os.path.basename(path)}" for path in image_paths]  # 웹에서 접근 가능한 이미지 경로 생성
         else:
             return "❌ 지원하지 않는 파일 형식입니다.", 400  # PDF 외 파일 업로드 방지
 
-        # 📌 세션을 활용해 슬라이드 데이터 저장
-        session['slides'] = slides  # 변환된 슬라이드 이미지 목록 저장
-        session['slide_type'] = slide_type  # 슬라이드 타입 저장 ('image')
-        session['answers'] = []  # 학생들의 O/X 응답을 저장할 리스트 초기화
-        session['current_idx'] = 0  # 현재 슬라이드 인덱스 초기화
+        save_slides(slides, slide_type)  # 🔥 JSON 파일에 슬라이드 목록 저장
 
         return redirect(url_for('slide', index=1))  # 첫 번째 슬라이드 페이지로 이동
 
@@ -73,65 +91,74 @@ def upload():
 # 📌 슬라이드를 표시하고 O/X 응답을 받는 기능
 @app.route('/slides/<int:index>', methods=['GET', 'POST'])
 def slide(index):
-    slides = session.get('slides', [])  # 세션에서 슬라이드 목록 가져오기
-    slide_type = session.get('slide_type', 'image')
-    answers = session.get('answers', [])
+    slides_data = load_slides()  # 🔥 JSON에서 슬라이드 목록 불러오기
+    slides = slides_data["slides"]
+    slide_type = slides_data["slide_type"]
+    
+    if not slides:
+        return "❗ 슬라이드가 준비되지 않았습니다.", 400
 
-    if not slides or len(slides) == 0:  # 슬라이드가 없을 경우 안내 메시지 표시
-        return "❗ 슬라이드가 준비되지 않았습니다. 교수님께 문의하세요.", 400
-
-    is_first = (index == 1)  # 첫 슬라이드 여부 확인
-    is_last = (index == len(slides))  # 마지막 슬라이드 여부 확인
+    is_first = (index == 1)
+    is_last = (index == len(slides))
 
     if request.method == 'POST':  # 학생이 O/X 응답을 클릭했을 때
-        answer = request.form.get('answer')  # 응답 값 가져오기
-        user_id = session.get('user_id')  # 사용자 ID 가져오기
-        if answer and not is_first and not is_last:  # 첫 번째, 마지막 슬라이드는 응답 저장 제외
-            with open('responses.csv', 'a', newline='') as f:  # 응답을 CSV 파일에 저장
-                writer = csv.writer(f)
-                writer.writerow([user_id, index, answer])  # 사용자 ID, 슬라이드 번호, 응답 기록
-            answers.append(answer)
-            session['answers'] = answers  # 세션에 응답 저장
+        answer = request.form.get('answer')
+        user_id = session.get('user_id')
+        if answer and not is_first and not is_last:
+            save_answers(user_id, index, answer)  # 🔥 응답 데이터 JSON 저장
 
         return redirect(url_for('slide', index=index + 1))  # 다음 슬라이드로 이동
 
     return render_template('slide.html',
                            index=index,
                            slide_count=len(slides),
-                           image_url=slides[index - 1],  # 현재 슬라이드 이미지 URL 가져오기
+                           image_url=slides[index - 1],  # 현재 슬라이드 이미지 URL
                            is_first=is_first,
                            is_last=is_last)
 
-# 📌 학생들의 응답 결과를 분석하여 통계를 제공하는 기능
+# 📌 학생들의 응답 결과를 분석하여 통계 제공
 @app.route('/stats')
-def admin_stats():
-    stats = {}  # O/X 응답 통계를 저장할 딕셔너리
-    slide_labels = []  # 슬라이드 번호 목록
-    o_counts = []  # O 응답 개수 저장 리스트
-    x_counts = []  # X 응답 개수 저장 리스트
+def stats():
+    stats_data = {}
+    slide_labels = []
+    o_counts = []
+    x_counts = []
 
     try:
-        df = pd.read_csv('responses.csv', names=['user_id', 'slide_index', 'answer'])  # CSV 파일 읽기
-        slides = session.get('slides', [])  # 슬라이드 목록 가져오기
-        last_index = len(slides) - 1  # 마지막 슬라이드 인덱스 확인
+        if os.path.exists(RESPONSES_FILE):
+            with open(RESPONSES_FILE, "r") as f:
+                responses = json.load(f)
+        else:
+            responses = []
 
-        # 📌 첫 번째(0)와 마지막 슬라이드는 제외
-        df = df[(df['slide_index'] != 0) & (df['slide_index'] != last_index)]
+        slides_data = load_slides()
+        slides = slides_data["slides"]
+        last_index = len(slides) - 1
 
-        grouped = df.groupby(['slide_index', 'answer']).size().unstack(fill_value=0)  # 응답 개수 그룹화
-        stats = grouped.to_dict(orient='index')  # 딕셔너리 형태로 변환
+        # 📌 첫 번째(1)와 마지막 슬라이드 제외
+        filtered_responses = [r for r in responses if r['slide_index'] > 1 and r['slide_index'] < last_index]
 
-        # 📌 슬라이드별 O/X 개수 정리
-        for slide_idx in sorted(stats.keys()):
+        # 📌 응답 데이터 분석
+        grouped = {}
+        for r in filtered_responses:
+            slide_idx = r["slide_index"]
+            answer = r["answer"]
+            if slide_idx not in grouped:
+                grouped[slide_idx] = {"O": 0, "X": 0}
+            grouped[slide_idx][answer] += 1
+
+        stats_data = grouped
+
+        for slide_idx in sorted(stats_data.keys()):
             slide_labels.append(f"Slide {slide_idx}")
-            o_counts.append(stats[slide_idx].get('O', 0))  # O 응답 개수 저장
-            x_counts.append(stats[slide_idx].get('X', 0))  # X 응답 개수 저장
+            o_counts.append(stats_data[slide_idx].get("O", 0))
+            x_counts.append(stats_data[slide_idx].get("X", 0))
 
     except Exception as e:
-        print("❌ 관리자 통계 에러:", e)  # 오류 발생 시 출력
+        print("❌ 관리자 통계 에러:", e)
 
     return render_template("stats.html",
-                           stats=stats,
+                           stats=stats_data,
                            labels=slide_labels,
                            o_counts=o_counts,
                            x_counts=x_counts)
