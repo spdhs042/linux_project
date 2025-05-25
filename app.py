@@ -1,8 +1,8 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session 
 import csv #csv 파일 처리 모듈
 import uuid #사용자 고유 ID 생성 모듈
 import os #파일 및 폴더 관리 모듈
+import shutil
 import pandas as pd
 from utils.convert_pdf_to_images import convert_pdf_to_images
 
