@@ -26,4 +26,5 @@ linux_project/
 ├── utils/
 │   ├── convert_pdf_to_images.py  # PDF → 이미지 변환 기능
 ├── requirements.txt       # 필요한 라이브러리 목록
+├── run.sh                 # 다중접속
 └── venv/                  # 가상환경 폴더
