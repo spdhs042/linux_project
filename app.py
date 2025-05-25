@@ -117,16 +117,11 @@ def admin_stats():
     except Exception as e:
         print("❌ 관리자 통계 에러:", e)  # 오류 발생 시 출력
 
-    return render_template("stats.html",  # 📌 관리자 통계 페이지 렌더링
+    return render_template("stats.html",  # 📌 통계 페이지 렌더링
                            stats=stats,
                            labels=slide_labels,
                            o_counts=o_counts,
                            x_counts=x_counts)
-
-# 📌 결과 보기 버튼 클릭 시 관리자 통계 페이지로 이동
-@app.route('/result')
-def result():
-    return redirect(url_for('stats'))  # 결과 페이지 대신 관리자 통계 페이지로 이동
 
 # 📌 Flask 서버 실행
 if __name__ == '__main__':
