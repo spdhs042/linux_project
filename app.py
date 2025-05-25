@@ -22,7 +22,6 @@ def initialize_folders():
 
 initialize_folders()  # 서버 시작 시 초기화
 
-
 # 📌 각 사용자에게 고유 ID를 할당하는 함수
 @app.before_request
 def assign_user_id():
@@ -38,6 +37,7 @@ def index():
 @app.route('/upload', methods=['GET', 'POST'])
 def upload():
     if request.method == 'POST':  # 사용자가 파일을 업로드했을 때 실행
+        initialize_folders()  # 서버 시작 시 초기화
         file = request.files['file']  # 업로드된 파일 가져오기
         filename = file.filename  # 파일 이름 가져오기
         filepath = os.path.join(UPLOAD_FOLDER, filename)  # 파일 저장 경로 설정
