@@ -1,7 +1,7 @@
 # linux_project
 리눅스실습및프로젝트 미니 프로젝트 과제
 
-목표 : 리눅스 실습 프로젝트에서 리눅스에 웹서버를 둔 웹사이트를 제작
+목표 : 리눅스에 웹서버를 둔 웹사이트를 제작
 
 웹사이트 설명 :
 
@@ -18,18 +18,19 @@ linux_project/
 │   ├── slides/            # 변환된 이미지 파일 저장 폴더
 │   ├── styles.css         # CSS 스타일시트 
 ├── templates/
-│   ├── index.html         # 메인 페이지 학생에게 보여주는 페이지
+│   ├── index.html         # 메인 페이지 : 학생에게 보여주는 페이지(수정 필요)
 │   ├── upload.html        # 파일 업로드 페이지
 │   ├── slide.html         # 슬라이드 보기 페이지
 │   ├── stats.html         # 관리자 통계 페이지
-├── responses.csv          # O/X 응답 데이터를 저장하는 CSV 파일(실행 시 생성됨)
+├── responses.csv          # O/X 응답 데이터를 저장하는 CSV 파일(실행 시 생성됨) -> 현재 json 파일로 임시 변경됨
 ├── utils/
 │   ├── convert_pdf_to_images.py  # PDF → 이미지 변환 기능
 ├── requirements.txt       # 필요한 라이브러리 목록
 ├── run.sh                 # 다중접속
+├── setup.sh               # 실행에 필요한 setup
 └── venv/                  # 가상환경 폴더
 
 
-동시접속 테스트 방법
-
-
+동시접속 테스트 방법 : 가상머신에서 프로젝트 디렉토리 안으로 들어와서 아래 명령어 실행
+bash setup.sh
+./run.sh
