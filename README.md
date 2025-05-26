@@ -31,6 +31,16 @@ linux_project/
 └── venv/                  # 가상환경 폴더
 
 
+
+로컬에 프로젝트 복사 리눅스 명령어
+git clone https://github.com/spdhs042/linux_project.git
+source venv/bin/activate
+cd linux_project
+pip install -r requirements.txt
+python app.py
+
+
+
 동시접속 테스트 방법 : 가상머신에서 프로젝트 디렉토리 안으로 들어와서 아래 명령어 실행
 bash setup.sh
 ./run.sh
