@@ -18,32 +18,21 @@ IMAGE_FOLDER = 'static/slides'  # 변환된 슬라이드 이미지 저장 폴더
 SLIDES_FILE = 'slides.json'  # 모든 사용자가 공유할 슬라이드 데이터 파일
 RESPONSES_FILE = 'responses.json'  # 모든 사용자의 응답을 저장하는 파일
 
-# 🔥 슬라이드 데이터를 JSON 파일에 저장하는 함수
+# 슬라이드 데이터를 JSON 파일에 저장하는 함수
 def save_slides(slides, slide_type):
     data = {"slides": slides, "slide_type": slide_type}
     with open(SLIDES_FILE, 'w') as f:
         json.dump(data, f)
 
-# 🔥 JSON에서 슬라이드 목록 및 유형을 불러오는 함수
+# JSON에서 슬라이드 목록 및 유형을 불러오는 함수
 def load_slides():
     if os.path.exists(SLIDES_FILE):
         with open(SLIDES_FILE, 'r') as f:
             return json.load(f)
     return {"slides": [], "slide_type": "image"}  # 기본값 반환
 
-# 🔥 응답 데이터를 JSON 파일에 저장하는 함수
-def save_answers(user_id, index, answer):
-    responses = []
-    if os.path.exists(RESPONSES_FILE):
-        with open(RESPONSES_FILE, "r") as f:
-            responses = json.load(f)
 
-    responses.append({"user_id": user_id, "slide_index": index, "answer": answer})
-
-    with open(RESPONSES_FILE, "w") as f:
-        json.dump(responses, f)
-
-# 🔥 서버 시작 시 업로드 및 슬라이드 폴더 초기화
+# 서버 시작 시 업로드 및 슬라이드 폴더 초기화
 def initialize_folders():
     for folder in [UPLOAD_FOLDER, IMAGE_FOLDER]:
         if os.path.exists(folder):
@@ -79,19 +68,23 @@ def upload():
         if filename.endswith('.pdf'):  # PDF 파일인지 확인
             image_paths = convert_pdf_to_images(filepath, IMAGE_FOLDER)  # PDF를 이미지로 변환
             slides = [f"/static/slides/{os.path.basename(path)}" for path in image_paths]  # 웹에서 접근 가능한 이미지 경로 생성
+
+              # 📌 새로운 PDF 업로드 시 responses.json 초기화
+            with open(RESPONSES_FILE, "w") as f:
+                json.dump({}, f)  # JSON 파일을 빈 리스트로 초기화
         else:
             return "❌ 지원하지 않는 파일 형식입니다.", 400  # PDF 외 파일 업로드 방지
 
-        save_slides(slides, slide_type)  # 🔥 JSON 파일에 슬라이드 목록 저장
+        save_slides(slides, slide_type)  # JSON 파일에 슬라이드 목록 저장
 
-        return redirect(url_for('slide', index=1))  # 첫 번째 슬라이드 페이지로 이동
+        return redirect(url_for('stats'))  # 첫 번째 슬라이드 페이지로 동
 
     return render_template('upload.html')  # 파일 업로드 페이지 렌더링
 
 # 📌 슬라이드를 표시하고 O/X 응답을 받는 기능
 @app.route('/slides/<int:index>', methods=['GET', 'POST'])
 def slide(index):
-    slides_data = load_slides()  # 🔥 JSON에서 슬라이드 목록 불러오기
+    slides_data = load_slides()  # JSON에서 슬라이드 목록 불러오기
     slides = slides_data["slides"]
     slide_type = slides_data["slide_type"]
     
@@ -101,13 +94,38 @@ def slide(index):
     is_first = (index == 1)
     is_last = (index == len(slides))
 
-    if request.method == 'POST':  # 학생이 O/X 응답을 클릭했을 때
+    # POST 요청: 응답 저장
+    if request.method == 'POST':
         answer = request.form.get('answer')
-        user_id = session.get('user_id')
-        if answer and not is_first and not is_last:
-            save_answers(user_id, index, answer)  # 🔥 응답 데이터 JSON 저장
+        if 1 < index < len(slides)  and answer:
+            user_id = session.get('user_id')
+            slide_index = str(index)
 
-        return redirect(url_for('slide', index=index + 1))  # 다음 슬라이드로 이동
+            # responses.json 파일 불러오기
+            if os.path.exists(RESPONSES_FILE):
+                with open(RESPONSES_FILE, 'r') as f:
+                    data = json.load(f)
+            else:
+                data = {}
+
+            # 사용자별 응답 딕셔너리 초기화
+            if user_id not in data:
+                data[user_id] = {}
+
+            # 해당 슬라이드 응답 덮어쓰기
+            data[user_id][slide_index] = answer
+
+            # 파일에 다시 저장
+            with open(RESPONSES_FILE, 'w') as f:
+                json.dump(data, f, indent=2)
+
+            # 세션에도 추가
+            answers = session.get('answers', [])
+            answers.append(answer)
+            session['answers'] = answers
+            session['current_idx'] = index + 1
+
+            return redirect(url_for('slide',index=index+1))
 
     return render_template('slide.html',
                            index=index,
@@ -125,27 +143,25 @@ def stats():
     x_counts = []
 
     try:
-        if os.path.exists(RESPONSES_FILE):
+        if os.path.exists(RESPONSES_FILE):   
             with open(RESPONSES_FILE, "r") as f:
                 responses = json.load(f)
-        else:
-            responses = []
 
-        slides_data = load_slides()
-        slides = slides_data["slides"]
-        last_index = len(slides) - 1
+            slides_data = load_slides()
+            slides = slides_data["slides"]
+            last_index = len(slides)
 
-        # 📌 첫 번째(1)와 마지막 슬라이드 제외
-        filtered_responses = [r for r in responses if r['slide_index'] > 1 and r['slide_index'] < last_index]
+            grouped = {}
 
-        # 📌 응답 데이터 분석
-        grouped = {}
-        for r in filtered_responses:
-            slide_idx = r["slide_index"]
-            answer = r["answer"]
-            if slide_idx not in grouped:
-                grouped[slide_idx] = {"O": 0, "X": 0}
-            grouped[slide_idx][answer] += 1
+            for user_id, answers in responses.items():
+                for slide_idx_str, answer in answers.items():
+                    slide_idx = int(slide_idx_str)
+                    if slide_idx == 1 or slide_idx == last_index:
+                        continue  # 첫/마지막 슬라이드는 통계 제외
+
+                    if slide_idx not in grouped:
+                        grouped[slide_idx] = {"O": 0, "X": 0}
+                    grouped[slide_idx][answer] += 1
 
         stats_data = grouped
 
