@@ -1,69 +1,144 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>📊 관리자 통계 대시보드</title>
+  <meta charset="UTF-8" />
+  <title>📊 슬라이드별 O/X 통계 및 그래프</title>
+
+  <!-- Chart.js 라이브러리 불러오기 (그래프 그리기에 사용) -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    /* 전체 슬라이드 블록을 중앙 정렬하고 아래쪽 여백 설정 */
+    .slide-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+
+    /* 표 테이블 기본 스타일 */
+    table {
+      border-collapse: collapse; /* 셀 경계 중복 제거 */
+      width: auto;               /* 내용에 따라 너비 자동 조절 */
+      table-layout: fixed;       /* 고정된 테이블 레이아웃 */
+    }
+
+    /* 셀 내부 여백 및 테두리, 텍스트 정렬 */
+    th, td {
+      border: 1px solid #444;
+      padding: 8px;
+      text-align: center;
+      vertical-align: top;
+      height: 100%;
+    }
+
+    /* 첫 번째 열(슬라이드 번호+이미지) 너비 설정 */
+    td:nth-child(1), th:nth-child(1) {
+      width: 33vw;
+      max-width: 300px;
+    }
+
+    /* 두 번째 열(그래프) 너비 설정 */
+    td:nth-child(2), th:nth-child(2) {
+      width: 250px;
+    }
+
+    /* 셀 내부를 세로 방향으로 정렬하기 위한 래퍼 */
+    .cell-wrapper {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100%;
+    }
+
+    /* 슬라이드 이미지 스타일 */
+    td img {
+      width: 100%;       /* 셀 너비에 맞춤 */
+      height: auto;      /* 비율 유지 */
+      margin-top: 5px;   /* 이미지와 텍스트 사이 여백 */
+      display: block;
+    }
+
+    /* 차트 캔버스 크기 고정 */
+    td canvas {
+      width: 220px !important;
+      height: 120px !important;
+      display: block;
+    }
+  </style>
 </head>
 <body>
-  <h2>📊 슬라이드별 O/X 통계표</h2>
 
-  <table border="1" cellpadding="10" style="width: 50%; border-collapse: collapse;">
-    <tr>
-      <th>슬라이드 번호</th>
-      <th>⭕ O</th>
-      <th>❌ X</th>
-    </tr>
-    {% for slide_idx, count in stats.items() %}
-    <tr>
-      <td>{{ slide_idx }}</td>
-      <td>{{ count.get('O', 0) }}</td>
-      <td>{{ count.get('X', 0) }}</td>
-    </tr>
-    {% endfor %}
-  </table>
+  <!-- 페이지 제목 -->
+  <h2 style="text-align:center;">📊 슬라이드별 O/X 통계 및 그래프</h2>
 
-  <hr>
+  <!-- 슬라이드별 테이블 반복 렌더링 (Jinja2 템플릿 문법 사용) -->
+  {% for slide_idx, count in stats.items() %}
+    <div class="slide-container">
+      <table>
+        <thead>
+          <tr>
+            <th>슬라이드 번호</th>
+            <th>그래프</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>
+              <!-- 슬라이드 번호 및 이미지 표시 -->
+              <div class="cell-wrapper">
+                {{ slide_idx }}<br />
+                <img src="/static/slides/slide_{{ slide_idx }}.png" alt="슬라이드 {{ slide_idx }} 이미지" />
+              </div>
+            </td>
+            <td>
+              <!-- 차트를 그릴 캔버스 영역 -->
+              <div class="cell-wrapper">
+                <canvas id="oxChart{{ slide_idx }}"></canvas>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  {% endfor %}
 
-  <h3>📈 슬라이드별 O/X 응답 그래프</h3>
-  <canvas id="oxChart" width="600" height="300"></canvas>
-
+  <!-- 각 슬라이드에 대한 O/X 응답 그래프 생성 스크립트 -->
   <script>
-    const ctx = document.getElementById('oxChart').getContext('2d');
-    const oxChart = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels: {{ labels|tojson }},
-        datasets: [
-          {
-            label: '⭕ O',
-            data: {{ o_counts|tojson }},
-            backgroundColor: 'rgba(75, 192, 192, 0.7)'
-          },
-          {
-            label: '❌ X',
-            data: {{ x_counts|tojson }},
-            backgroundColor: 'rgba(255, 99, 132, 0.7)'
-          }
-        ]
-      },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: 'top' },
-          title: {
-            display: true,
-            text: '슬라이드별 O/X 응답 통계'
-          }
+    {% for slide_idx, count in stats.items() %}
+      // 해당 슬라이드의 캔버스 컨텍스트 가져오기
+      const ctx{{ slide_idx }} = document.getElementById('oxChart{{ slide_idx }}').getContext('2d');
+
+      // 새로운 바 차트 생성
+      new Chart(ctx{{ slide_idx }}, {
+        type: 'bar',  // 바 차트 형식
+        data: {
+          labels: ['⭕', '❌'],  // 라벨 (O, X)
+          datasets: [{
+            label: '슬라이드 {{ slide_idx }} 응답',
+            data: [{{ count.get('O', 0) }}, {{ count.get('X', 0) }}], // 응답 수 (기본값 0)
+            backgroundColor: [
+              'rgba(75, 192, 192, 0.7)',   // O 응답 색상
+              'rgba(255, 99, 132, 0.7)'    // X 응답 색상
+            ]
+          }]
         },
-        scales: {
-          y: {
-            beginAtZero: true,
-            ticks: { stepSize: 1 }
+        options: {
+          responsive: false, // 반응형 비활성화 (고정 크기 유지)
+          plugins: {
+            legend: { display: false } // 범례 제거
+          },
+          scales: {
+            y: {
+              beginAtZero: true,    // Y축 0부터 시작
+              ticks: { stepSize: 1 } // Y축 간격 1로 설정
+            }
           }
         }
-      }
-    });
+      });
+    {% endfor %}
   </script>
+
 </body>
 </html>
+
