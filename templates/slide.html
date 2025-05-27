@@ -3,47 +3,142 @@
 <head>
   <meta charset="UTF-8">
   <title>슬라이드 {{ index }}</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style_slide.css') }}">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .ox-button {
+      @apply w-28 h-28 rounded-full text-4xl flex items-center justify-center bg-gray-300 transition-colors font-bold;
+      font-size: 80px;
+      color: #6b7280;
+    }
+    .ox-button.ox:hover {
+      color: #22c55e;
+    }
+    .ox-button.xx:hover {
+      color: #ef4444;
+    }
+  </style>
 </head>
-<body>
-  <div class="slide-container">
-    <div class="slide-main">
-      <h3>슬라이드 {{ index }} / {{ slide_count }}</h3>
+<body class="h-screen bg-gray-100 flex overflow-hidden relative">
 
-      {% if not is_first %}
-        <a href="/slides/{{ index - 1 }}" class="arrow-btn arrow-prev" aria-label="이전 슬라이드">&lt;</a>
-      {% endif %}
-      {% if not is_last %}
-        <a href="/slides/{{ index + 1 }}" class="arrow-btn arrow-next" aria-label="다음 슬라이드">&gt;</a>
-      {% else %}
-        <a href="/stats" class="arrow-btn arrow-next" aria-label="결과 보기">✔</a>
-      {% endif %}
+  <!-- imageUrls를 JS에서 직접 생성 -->
+  <script>
+    const totalSlides = {{ slide_count }};
+    let currentSlide = {{ index - 1 }};
+    const imageUrls = Array.from({length: totalSlides}, (_, i) =>
+      `/static/slides/slide_${i + 1}.png`
+    );
+  </script>
 
-      <img src="{{ image_url }}" class="slide-img" alt="슬라이드 이미지">
+  <div class="flex h-screen w-full">
+    <!-- 본문 영역 -->
+    <div class="flex-1 flex flex-col items-center justify-center relative">
 
-      {% if not is_first and not is_last %}
-        <form method="post">
-          <input type="hidden" name="answer" value="O">
-          <button class="btn o-btn" type="submit">⭕ O</button>
-        </form>
-        <form method="post">
-          <input type="hidden" name="answer" value="X">
-          <button class="btn x-btn" type="submit">❌ X</button>
-        </form>
-      {% endif %}
+      <!-- 이미지 + 좌우 버튼 -->
+      <div class="relative flex items-center justify-center w-full h-[500px]">
+        <button onclick="prevSlide()" class="absolute left-4 top-1/2 transform -translate-y-1/2 text-4xl font-bold hover:text-blue-500 z-10">
+          &lt;
+        </button>
+        <img id="slide-image" src="{{ image_url }}" alt="슬라이드" class="w-[80%] h-[500px] object-contain shadow rounded-xl" />
+        <button onclick="nextSlide()" class="absolute right-4 top-1/2 transform -translate-y-1/2 text-4xl font-bold hover:text-blue-500 z-10">
+          &gt;
+        </button>
+      </div>
+
+      <!-- 슬라이드 번호 -->
+      <div class="text-center mt-4 text-sm text-gray-600">
+        <span id="slide-number"></span> / <span id="total-slides"></span>
+      </div>
+
+      <!-- OX 버튼 -->
+      <form id="answerForm" method="POST">
+        <input type="hidden" name="index" id="indexInput">
+        <input type="hidden" name="answer" id="choiceInput">
+        <div id="ox-buttons" class="mt-8 flex justify-center gap-48">
+          <button type="button" class="ox-button ox" onclick="submitAnswer('O')">O</button>
+          <button type="button" class="ox-button xx" onclick="submitAnswer('X')">X</button>
+        </div>
+      </form>
+
+      <!-- 결과 보기 -->
+      <div id="result-button" class="hidden mt-8">
+        <button onclick="viewResults()" class="px-6 py-3 text-lg font-bold text-white bg-blue-500 rounded hover:bg-blue-600">
+          결과 보기
+        </button>
+      </div>
     </div>
 
-    <div class="slide-sidebar">
-      <h4>📚 전체 슬라이드</h4>
-      {% for i in range(1, slide_count + 1) %}
-        <div class="thumb-wrapper">
-          <a href="/slides/{{ i }}">
-            <img src="/static/slides/slide_{{ i }}.png" class="thumb {% if i == index %}selected{% endif %}" alt="슬라이드 {{ i }}">
-          </a>
-          <div class="thumb-number">{{ i }}</div>
-        </div>
-      {% endfor %}
+    <!-- 썸네일 -->
+    <div class="w-1/5 p-4 border-l overflow-y-auto">
+      <h4 class="mb-2 font-semibold">📁 {{ filename }}</h4>
+      <div id="thumbnail-list" class="flex flex-col gap-2">
+        {% for i in range(1, slide_count + 1) %}
+        <a href="/slides/{{ i }}">
+          <img src="/static/slides/slide_{{ i }}.png" class="thumb {% if i == index %}selected{% endif %}" alt="슬라이드 {{ i }}">
+        </a>
+        {% endfor %}
+      </div>
     </div>
   </div>
+
+  <!-- 자바스크립트 로직 -->
+  <script>
+    const slideImage = document.getElementById("slide-image");
+    const slideNumber = document.getElementById("slide-number");
+    const totalSlideText = document.getElementById("total-slides");
+    const thumbnailList = document.getElementById("thumbnail-list");
+    const oxButtons = document.getElementById("ox-buttons");
+    const resultButton = document.getElementById("result-button");
+    const indexInput = document.getElementById("indexInput");
+
+    totalSlideText.textContent = totalSlides;
+
+    function updateSlide() {
+      slideImage.src = imageUrls[currentSlide];
+      slideNumber.textContent = currentSlide + 1;
+      indexInput.value = currentSlide + 1;
+
+      if (currentSlide === 0) {
+        oxButtons.classList.add("hidden");
+        resultButton.classList.add("hidden");
+      } else if (currentSlide === totalSlides - 1) {
+        oxButtons.classList.add("hidden");
+        resultButton.classList.remove("hidden");
+      } else {
+        oxButtons.classList.remove("hidden");
+        resultButton.classList.add("hidden");
+      }
+
+      document.querySelectorAll(".thumb").forEach((thumb, idx) => {
+        thumb.classList.toggle("ring-2", idx === currentSlide);
+        thumb.classList.toggle("ring-blue-400", idx === currentSlide);
+      });
+    }
+
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        updateSlide();
+      }
+    }
+
+    function nextSlide() {
+      if (currentSlide < totalSlides - 1) {
+        currentSlide++;
+        updateSlide();
+      }
+    }
+
+    function submitAnswer(choice) {
+      document.getElementById('choiceInput').value = choice;
+      document.getElementById('answerForm').action = `/slides/${currentSlide + 1}`;
+      document.getElementById('answerForm').submit();
+    }
+
+    function viewResults() {
+      window.location.href = "/stats";
+    }
+
+    updateSlide();
+  </script>
 </body>
 </html>
