@@ -18,11 +18,11 @@ linux_project/
 │   ├── slides/            # 변환된 이미지 파일 저장 폴더
 │   ├── styles.css         # CSS 스타일시트 
 ├── templates/
-│   ├── index.html         # 메인 페이지 : 학생에게 보여주는 페이지(수정 필요)
+│   ├── index.html         # 메인 페이지 : 학생에게 보여주는 페이지
 │   ├── upload.html        # 파일 업로드 페이지
 │   ├── slide.html         # 슬라이드 보기 페이지
 │   ├── stats.html         # 관리자 통계 페이지
-├── responses.csv          # O/X 응답 데이터를 저장하는 CSV 파일(실행 시 생성됨) -> 현재 json 파일로 임시 변경됨
+├── responses.json          # O/X 응답 데이터를 저장하는 JSON 파일(실행 시 생성됨)
 ├── utils/
 │   ├── convert_pdf_to_images.py  # PDF → 이미지 변환 기능
 ├── requirements.txt       # 필요한 라이브러리 목록
