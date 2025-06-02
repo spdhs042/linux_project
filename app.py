@@ -137,40 +137,44 @@ def slide(index):
 # 📌 학생들의 응답 결과를 분석하여 통계 제공
 @app.route('/stats')
 def stats():
-    stats_data = {}
-    slide_labels = []
-    o_counts = []
-    x_counts = []
+    stats_data = {}  #슬라이드 통계를 저장할 딕셔너리
+    slide_labels = [] # 슬라이즈 라벨 목록
+    o_counts = [] # 'o'선택 횟수 목록
+    x_counts = [] # 'x'선택 횟수 목록
 
     try:
-        if os.path.exists(RESPONSES_FILE):   
-            with open(RESPONSES_FILE, "r") as f:
-                responses = json.load(f)
+        if os.path.exists(RESPONSES_FILE):   # 응답 데이터 파일이 존재하는지 확인
+            with open(RESPONSES_FILE, "r") as f:  # 파일을 읽기 모드로 열기
+                responses = json.load(f)  # JSON 데이터를 파싱하여 딕셔너리에 저장 
 
-            slides_data = load_slides()
-            slides = slides_data["slides"]
-            last_index = len(slides)
+            slides_data = load_slides() # 슬라이드 데이터 불러오기
+            slides = slides_data["slides"] # 슬라이드 리스트 가져오기
+            last_index = len(slides) # 마지막 슬라이드의 인덱스 계산
 
-            grouped = {}
 
+            grouped = {} # 통계를 저장할 딕셔너리
+
+ # 사용자별 응답을 반복
             for user_id, answers in responses.items():
                 for slide_idx_str, answer in answers.items():
-                    slide_idx = int(slide_idx_str)
+                    slide_idx = int(slide_idx_str) # 문자열 인덱스를 정수로 변환
+
                     if slide_idx == 1 or slide_idx == last_index:
                         continue  # 첫/마지막 슬라이드는 통계 제외
 
-                    if slide_idx not in grouped:
+                    if slide_idx not in grouped: # 해당 슬라이드가 통계에 없으면 초기화
                         grouped[slide_idx] = {"O": 0, "X": 0}
-                    grouped[slide_idx][answer] += 1
+                    grouped[slide_idx][answer] += 1 # 선택된 답변 수 증가
 
-        stats_data = grouped
+        stats_data = grouped # 통계 데이터를 업데이트
 
+ # 슬라이드 인덱스를 정렬하여 통계 데이터를 리스트로 변환
         for slide_idx in sorted(stats_data.keys()):
-            slide_labels.append(f"Slide {slide_idx}")
-            o_counts.append(stats_data[slide_idx].get("O", 0))
-            x_counts.append(stats_data[slide_idx].get("X", 0))
+            slide_labels.append(f"Slide {slide_idx}") # 슬라이드 라벨 추가
+            o_counts.append(stats_data[slide_idx].get("O", 0))  # "O" 선택 수 추가
+            x_counts.append(stats_data[slide_idx].get("X", 0)) # "X" 선택 수 추가
 
-    except Exception as e:
+    except Exception as e: # 예외 발생 시 오류 메시지 출력
         print("❌ 관리자 통계 에러:", e)
 
     return render_template("stats.html",
