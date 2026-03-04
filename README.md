@@ -11,6 +11,7 @@
 
 
 현재 디렉토리 구조
+```
 linux_project/
 ├── app.py                 # Flask 애플리케이션 코드
 ├── uploads/               # 업로드된 PDF 파일 저장 폴더
@@ -29,7 +30,7 @@ linux_project/
 ├── run.sh                 # 다중접속
 ├── setup.sh               # 실행에 필요한 setup
 └── venv/                  # 가상환경 폴더
-
+```
 
 
 로컬에 프로젝트 복사 리눅스 명령어
